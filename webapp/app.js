@@ -66,7 +66,9 @@
     perPage: 50,
     currentPage: 1,
     sortMode: 'newest',
-    decisionFilter: 'all', // 'all' | 'undecided' | 'keep' | 'maybe' | 'skip'
+    decisionFilter: 'all', // 'all' | 'undecided' | 'keep' | 'maybe'
+    qualityFilter: new Set(), // subset of 'Q1'|'Q2'|'Q3'|'Q4'|'none' — empty = no filter
+    typeFilter: new Set(), // subset of the pub-type strings actually present in state.results — empty = no filter
     results: [],
     totalCount: 0,
     hasSearched: false,
@@ -772,6 +774,10 @@
     dom.searchBtn.disabled = true;
     state.possiblyMissed = [];
     renderPossiblyMissed();
+    // A new search invalidates whichever quartiles/types were available
+    // (and selected) in the previous result set.
+    state.qualityFilter = new Set();
+    state.typeFilter = new Set();
 
     esearch(query, state.maxResults)
       .then(function (searchResult) {
@@ -781,6 +787,7 @@
         if (searchResult.idlist.length === 0) {
           state.results = [];
           state.currentPage = 1;
+          renderQualityTypeFilters();
           renderResults();
           return null;
         }
@@ -793,6 +800,7 @@
           applySavedDecisions(papers);
           state.results = papers;
           state.currentPage = 1;
+          renderQualityTypeFilters();
           renderResults();
 
           var primaryIds = papers.map(function (p) { return p.pmid; });
@@ -847,8 +855,26 @@
     return list.filter(function (p) { return p.decision === state.decisionFilter; });
   }
 
+  function paperQuartile(p) {
+    return (p.tier && p.tier.quartile) || 'none';
+  }
+
+  function paperType(p) {
+    return (p.pubtypes && p.pubtypes[0]) || 'Article';
+  }
+
+  function filterByQuality(list) {
+    if (!state.qualityFilter.size) return list;
+    return list.filter(function (p) { return state.qualityFilter.has(paperQuartile(p)); });
+  }
+
+  function filterByType(list) {
+    if (!state.typeFilter.size) return list;
+    return list.filter(function (p) { return state.typeFilter.has(paperType(p)); });
+  }
+
   function getPagedResults() {
-    var filtered = filterByDecision(state.results);
+    var filtered = filterByType(filterByQuality(filterByDecision(state.results)));
     var sorted = sortResults(filtered, state.sortMode);
     var perPage = state.perPage;
     var totalItems = sorted.length;
@@ -858,6 +884,50 @@
     var startIdx = (state.currentPage - 1) * perPage;
     var pageItems = sorted.slice(startIdx, startIdx + perPage);
     return { pageItems: pageItems, totalItems: totalItems, totalPages: totalPages, startIdx: startIdx };
+  }
+
+  // Rebuilds the Quality/Type filter chip rows from whichever quartiles and
+  // pub types actually occur in the current result set — not the full fixed
+  // list from the query builder, so users never see a chip for something
+  // that can't possibly match anything right now. Only needs to run when
+  // state.results (or its tier data) changes, not on every re-render.
+  function buildToggleFilterBar(container, label, values, activeSet, formatLabel) {
+    container.innerHTML = '';
+    container.classList.toggle('hidden', values.length <= 1);
+    if (values.length <= 1) return;
+
+    var labelEl = document.createElement('span');
+    labelEl.className = 'sort-label';
+    labelEl.textContent = label;
+    container.appendChild(labelEl);
+
+    values.forEach(function (value) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'sort-btn' + (activeSet.has(value) ? ' active' : '');
+      btn.textContent = formatLabel ? formatLabel(value) : value;
+      btn.addEventListener('click', function () {
+        if (activeSet.has(value)) activeSet.delete(value); else activeSet.add(value);
+        btn.classList.toggle('active', activeSet.has(value));
+        state.currentPage = 1;
+        renderResults();
+      });
+      container.appendChild(btn);
+    });
+  }
+
+  function renderQualityTypeFilters() {
+    var quartileOrder = ['Q1', 'Q2', 'Q3', 'Q4', 'none'];
+    var presentQuartiles = new Set(state.results.map(paperQuartile));
+    var quartiles = quartileOrder.filter(function (q) { return presentQuartiles.has(q); });
+
+    var presentTypes = new Set(state.results.map(paperType));
+    var types = Array.from(presentTypes).sort();
+
+    buildToggleFilterBar(dom.qualityFilterBar, 'Quality:', quartiles, state.qualityFilter, function (q) {
+      return q === 'none' ? 'Not indexed' : q;
+    });
+    buildToggleFilterBar(dom.typeFilterBar, 'Type:', types, state.typeFilter);
   }
 
   function renderResults() {
@@ -1003,6 +1073,14 @@
     copyCiteBtn.textContent = 'Copy citation';
     actions.appendChild(copyCiteBtn);
 
+    var copyLinkBtn = document.createElement('button');
+    copyLinkBtn.type = 'button';
+    copyLinkBtn.className = 'btn-icon';
+    copyLinkBtn.title = 'Copy PubMed link';
+    copyLinkBtn.setAttribute('aria-label', 'Copy PubMed link');
+    copyLinkBtn.innerHTML = LINK_ICON_SVG;
+    actions.appendChild(copyLinkBtn);
+
     card.appendChild(actions);
 
     var abstractBox = document.createElement('div');
@@ -1058,6 +1136,9 @@
     maybeBtn.addEventListener('click', function () { setDecision('maybe'); });
     copyCiteBtn.addEventListener('click', function () {
       copyToClipboardWithFlash(formatVancouver(paper), copyCiteBtn);
+    });
+    copyLinkBtn.addEventListener('click', function () {
+      copyToClipboardWithIconFlash('https://pubmed.ncbi.nlm.nih.gov/' + paper.pmid + '/', copyLinkBtn);
     });
 
     return card;
@@ -1368,17 +1449,32 @@
     setTimeout(function () { dom.copyQueryBtn.textContent = original; }, 1200);
   }
 
+  function copyToClipboard(text, onCopied) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(onCopied, function () { fallbackCopy(text, onCopied); });
+    } else {
+      fallbackCopy(text, onCopied);
+    }
+  }
+
   function copyToClipboardWithFlash(text, buttonEl) {
     var original = buttonEl.textContent;
-    var flash = function () {
+    copyToClipboard(text, function () {
       buttonEl.textContent = 'Copied!';
       setTimeout(function () { buttonEl.textContent = original; }, 1200);
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(flash, function () { fallbackCopy(text, flash); });
-    } else {
-      fallbackCopy(text, flash);
-    }
+    });
+  }
+
+  // Icon-only variant (e.g. the per-card "copy PubMed link" button) — swaps
+  // the SVG to a checkmark briefly instead of changing text.
+  var LINK_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>';
+  var CHECK_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+
+  function copyToClipboardWithIconFlash(text, buttonEl) {
+    copyToClipboard(text, function () {
+      buttonEl.innerHTML = CHECK_ICON_SVG;
+      setTimeout(function () { buttonEl.innerHTML = LINK_ICON_SVG; }, 1200);
+    });
   }
 
   // =========================================================
@@ -1503,6 +1599,8 @@
 
     dom.sortBar = document.getElementById('sortBar');
     dom.decisionFilterBar = document.getElementById('decisionFilterBar');
+    dom.qualityFilterBar = document.getElementById('qualityFilterBar');
+    dom.typeFilterBar = document.getElementById('typeFilterBar');
     dom.resultsSummary = document.getElementById('resultsSummary');
     dom.resultsList = document.getElementById('resultsList');
     dom.paginationInfo = document.getElementById('paginationInfo');
@@ -1700,6 +1798,7 @@
     scimagoMeta = meta;
     applyTierLookup(state.results);
     applyTierLookup(state.possiblyMissed);
+    renderQualityTypeFilters(); // quartiles just got (re)computed, available options may have changed
     renderResults();
     renderPossiblyMissed();
     updateCsvStatusText();

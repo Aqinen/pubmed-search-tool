@@ -542,8 +542,14 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* -------------------- Results -------------------- */
-  #sortBar, #decisionFilterBar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-  #sortBar .sort-label, #decisionFilterBar .sort-label { font-size: 13px; color: var(--text-secondary); margin-right: 4px; }
+  #sortBar, #decisionFilterBar, #qualityFilterBar, #typeFilterBar {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  #qualityFilterBar.hidden, #typeFilterBar.hidden { display: none; }
+  #sortBar .sort-label, #decisionFilterBar .sort-label,
+  #qualityFilterBar .sort-label, #typeFilterBar .sort-label {
+    font-size: 13px; color: var(--text-secondary); margin-right: 4px;
+  }
   .sort-btn {
     padding: 6px 14px;
     border-radius: 999px;
@@ -625,6 +631,22 @@
   }
   .btn-keep.active { background: var(--success); color: #ffffff; border-color: var(--success); }
   .btn-maybe.active { background: var(--warning); color: #ffffff; border-color: var(--warning); }
+
+  .btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-secondary);
+  }
+  .btn-icon:hover { background: var(--bg-subtle); color: var(--accent); }
+  .btn-icon svg { width: 16px; height: 16px; }
 
   .abstract-box {
     margin-top: 12px;
@@ -838,6 +860,9 @@ key เก็บในเบราว์เซอร์ของคุณเท�
       <button type="button" class="sort-btn" data-decision="keep">Keep</button>
       <button type="button" class="sort-btn" data-decision="maybe">Maybe</button>
     </div>
+
+    <div id="qualityFilterBar" class="hidden"></div>
+    <div id="typeFilterBar" class="hidden"></div>
 
     <div id="resultsSummary"></div>
     <div id="resultsList"></div>
