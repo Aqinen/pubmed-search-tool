@@ -697,17 +697,7 @@
     dom.exportCopyBtn.addEventListener('click', function () {
       getKeptPapers().then(function (papers) {
         if (!papers.length) return;
-        var text = papers.map(formatVancouver).join('\n\n');
-        var flash = function () {
-          var original = dom.exportCopyBtn.textContent;
-          dom.exportCopyBtn.textContent = 'Copied!';
-          setTimeout(function () { dom.exportCopyBtn.textContent = original; }, 1200);
-        };
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(flash, function () { fallbackCopy(text, flash); });
-        } else {
-          fallbackCopy(text, flash);
-        }
+        copyToClipboardWithFlash(papers.map(formatVancouver).join('\n\n'), dom.exportCopyBtn);
       });
     });
 
@@ -1001,11 +991,11 @@
     maybeBtn.textContent = 'Maybe';
     actions.appendChild(maybeBtn);
 
-    var skipBtn = document.createElement('button');
-    skipBtn.type = 'button';
-    skipBtn.className = 'btn btn-skip' + (paper.decision === 'skip' ? ' active' : '');
-    skipBtn.textContent = 'Skip';
-    actions.appendChild(skipBtn);
+    var copyCiteBtn = document.createElement('button');
+    copyCiteBtn.type = 'button';
+    copyCiteBtn.className = 'btn btn-copy-cite';
+    copyCiteBtn.textContent = 'Copy citation';
+    actions.appendChild(copyCiteBtn);
 
     card.appendChild(actions);
 
@@ -1038,7 +1028,6 @@
       if (decision) card.classList.add('decision-' + decision);
       keepBtn.classList.toggle('active', decision === 'keep');
       maybeBtn.classList.toggle('active', decision === 'maybe');
-      skipBtn.classList.toggle('active', decision === 'skip');
     }
 
     function setDecision(newDecision) {
@@ -1061,7 +1050,9 @@
 
     keepBtn.addEventListener('click', function () { setDecision('keep'); });
     maybeBtn.addEventListener('click', function () { setDecision('maybe'); });
-    skipBtn.addEventListener('click', function () { setDecision('skip'); });
+    copyCiteBtn.addEventListener('click', function () {
+      copyToClipboardWithFlash(formatVancouver(paper), copyCiteBtn);
+    });
 
     return card;
   }
@@ -1369,6 +1360,19 @@
     var original = dom.copyQueryBtn.textContent;
     dom.copyQueryBtn.textContent = 'Copied!';
     setTimeout(function () { dom.copyQueryBtn.textContent = original; }, 1200);
+  }
+
+  function copyToClipboardWithFlash(text, buttonEl) {
+    var original = buttonEl.textContent;
+    var flash = function () {
+      buttonEl.textContent = 'Copied!';
+      setTimeout(function () { buttonEl.textContent = original; }, 1200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(flash, function () { fallbackCopy(text, flash); });
+    } else {
+      fallbackCopy(text, flash);
+    }
   }
 
   // =========================================================
