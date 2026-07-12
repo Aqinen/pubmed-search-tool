@@ -1,0 +1,12 @@
+This folder intentionally has no bundled SCImago CSV.
+
+The build spec (pubmed_tool_spec.md §2) calls for bundling a default
+`scimagojr_2025.csv` here, copied from `../database/scimagojr_2025.csv`.
+That source file does not exist anywhere in this environment, so no
+default dataset ships with the app.
+
+The app works fine with this folder empty: journal-tier badges show
+"—" (not indexed) for every result until a user uploads a real SCImago
+CSV via Settings -> "Upload SCImago CSV" (see index.html / app.js
+handleCsvUpload). Once uploaded, the parsed data is cached in the
+browser's IndexedDB, not written back to this folder.

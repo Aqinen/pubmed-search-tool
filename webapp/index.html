@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PubMed Literature Review Tool</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --bg-elevated: #ffffff;
+    --bg-subtle: #eef0f3;
+    --text: #1a1c1f;
+    --text-secondary: #5f6368;
+    --border: #d7dae0;
+    --accent: #2563eb;
+    --accent-text: #ffffff;
+    --accent-hover: #1d4ed8;
+    --danger: #dc2626;
+    --danger-bg: #fdecec;
+    --success: #16a34a;
+    --warning: #d97706;
+    --q1-bg: #16a34a; --q1-text: #ffffff;
+    --q2-bg: #65a30d; --q2-text: #ffffff;
+    --q3-bg: #ca8a04; --q3-text: #ffffff;
+    --q4-bg: #dc2626; --q4-text: #ffffff;
+    --qnone-bg: #d7dae0; --qnone-text: #5f6368;
+    --chip-bg: #eef0f3;
+    --chip-text: #3c4043;
+    --chip-selected-bg: #2563eb;
+    --chip-selected-text: #ffffff;
+    --link: #2563eb;
+    --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
+    color-scheme: light dark;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --bg-elevated: #1c1f24;
+      --bg-subtle: #22262c;
+      --text: #e7e9ec;
+      --text-secondary: #9aa0a6;
+      --border: #2e333a;
+      --accent: #5b8def;
+      --accent-text: #0b0d10;
+      --accent-hover: #7ba3f2;
+      --danger: #f87171;
+      --danger-bg: #3a1f22;
+      --success: #4ade80;
+      --warning: #fbbf24;
+      --q1-bg: #1e7e37; --q1-text: #eafff0;
+      --q2-bg: #56760f; --q2-text: #f3ffe0;
+      --q3-bg: #97690a; --q3-text: #fff6e0;
+      --q4-bg: #9b2626; --q4-text: #ffecec;
+      --qnone-bg: #2e333a; --qnone-text: #9aa0a6;
+      --chip-bg: #22262c;
+      --chip-text: #c7cad0;
+      --chip-selected-bg: #5b8def;
+      --chip-selected-text: #0b0d10;
+      --link: #7ba3f2;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.45;
+  }
+
+  a { color: var(--link); }
+
+  header.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  header.app-header h1 {
+    font-size: 18px;
+    margin: 0;
+  }
+
+  header.app-header .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  #exportBar { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+  #exportBar button {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  #exportBar button:hover:not(:disabled) { background: var(--border); }
+  #exportBar button:disabled { opacity: 0.5; cursor: not-allowed; }
+  #exportCount { font-weight: 700; color: var(--text); }
+
+  main {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 20px 16px 80px;
+  }
+
+  section {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  h2 {
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    margin: 0 0 14px;
+  }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+  }
+
+  /* -------------------- Settings gear -------------------- */
+  #settingsToggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 8px;
+  }
+  #settingsToggle:hover { background: var(--border); }
+
+  #settingsPanel {
+    display: none;
+  }
+  #settingsPanel.open {
+    display: block;
+  }
+
+  .settings-block { margin-bottom: 22px; }
+  .settings-block:last-child { margin-bottom: 0; }
+  .settings-block label.field-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .settings-block label.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  .settings-block label.toggle-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+  }
+  .settings-block input[type="text"],
+  .settings-block input[type="password"] {
+    width: 100%;
+    max-width: 420px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+  .help-text {
+    background: var(--bg-subtle);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+  }
+  .status-text {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  /* -------------------- Query builder -------------------- */
+  #termRows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .term-row { display: flex; align-items: center; gap: 8px; }
+  .term-label {
+    min-width: 64px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .joiner-toggle {
+    min-width: 64px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--accent);
+    background: var(--bg-subtle);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .term-input {
+    flex: 1;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+  .remove-term-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--danger);
+    border-radius: 8px;
+    width: 34px;
+    height: 34px;
+  }
+  #addTermBtn {
+    background: transparent;
+    border: 1px dashed var(--accent);
+    color: var(--accent);
+    padding: 7px 14px;
+    border-radius: 8px;
+    margin-bottom: 18px;
+  }
+
+  #savedSearchesRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  #savedSearchesSelect {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    max-width: 220px;
+  }
+  #savedSearchesRow button {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  #savedSearchesRow button:hover { background: var(--border); }
+  #saveSearchBtn { border: 1px dashed var(--accent); color: var(--accent); background: transparent; margin-left: auto; }
+
+  .pubtype-group { margin-bottom: 10px; }
+  .pubtype-group-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--chip-bg);
+    color: var(--chip-text);
+    font-size: 13px;
+  }
+  .chip.selected {
+    background: var(--chip-selected-bg);
+    color: var(--chip-selected-text);
+    border-color: var(--chip-selected-bg);
+  }
+
+  .row-block { margin-top: 18px; }
+  .hint { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+
+  /* -------------------- Year range (dual timeline slider) -------------------- */
+  #yearRangeLabel { font-weight: 600; margin-bottom: 10px; }
+  .year-slider {
+    position: relative;
+    height: 18px;
+    margin: 4px 2px 26px;
+  }
+  .year-slider-track {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    transform: translateY(-50%);
+  }
+  .year-slider-range {
+    position: absolute;
+    top: 50%;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--accent);
+    transform: translateY(-50%);
+  }
+  .year-thumb {
+    position: absolute;
+    top: 50%;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg-elevated);
+    box-shadow: var(--shadow);
+    cursor: grab;
+    touch-action: none;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+  }
+  .year-thumb:active { cursor: grabbing; }
+  .year-thumb:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+  .year-slider-ticks {
+    position: absolute;
+    top: 16px;
+    left: 0;
+    right: 0;
+    height: 16px;
+  }
+  .year-tick {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  /* -------------------- Query preview (collapsed by default) -------------------- */
+  #queryPreviewToggle {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  #queryPreviewToggle:hover { color: var(--text); border-color: var(--text-secondary); }
+  #queryPreviewBody { display: none; margin-top: 10px; }
+  #queryPreviewBody.open { display: block; }
+
+  #maxResultsGroup { display: flex; gap: 8px; }
+  .segmented-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-subtle);
+    color: var(--text);
+  }
+  .segmented-btn.active {
+    background: var(--accent);
+    color: var(--accent-text);
+    border-color: var(--accent);
+  }
+
+  #queryPreviewText {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+  }
+  #copyQueryBtn {
+    margin-top: 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+
+  #searchBtn {
+    margin-top: 18px;
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    padding: 11px 22px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  #searchBtn:hover { background: var(--accent-hover); }
+  #searchBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  #searchError {
+    display: none;
+    margin-top: 12px;
+    background: var(--danger-bg);
+    color: var(--danger);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  #searchError.visible { display: block; }
+
+  #searchLoading {
+    display: none;
+    margin-top: 12px;
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+  #searchLoading.visible { display: block; }
+
+  /* -------------------- Results -------------------- */
+  #sortBar, #decisionFilterBar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  #sortBar .sort-label, #decisionFilterBar .sort-label { font-size: 13px; color: var(--text-secondary); margin-right: 4px; }
+  .sort-btn {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-subtle);
+    color: var(--text);
+    font-size: 13px;
+  }
+  .sort-btn.active {
+    background: var(--accent);
+    color: var(--accent-text);
+    border-color: var(--accent);
+  }
+
+  #resultsSummary { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
+
+  #resultsList { display: flex; flex-direction: column; gap: 12px; }
+
+  /* -------------------- Possibly-missed fallback -------------------- */
+  #possiblyMissedBlock { margin-top: 22px; }
+  #possiblyMissedBlock.hidden { display: none; }
+  #possiblyMissedToggle {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  #possiblyMissedToggle:hover { color: var(--text); border-color: var(--text-secondary); }
+  #possiblyMissedList { display: none; flex-direction: column; gap: 12px; margin-top: 12px; }
+  #possiblyMissedList.open { display: flex; }
+
+  .paper-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: var(--bg);
+  }
+  .paper-card.decision-keep { border-color: var(--success); box-shadow: 0 0 0 1px var(--success) inset; }
+  .paper-card.decision-maybe { border-color: var(--warning); box-shadow: 0 0 0 1px var(--warning) inset; }
+  .paper-card.decision-skip { opacity: 0.55; }
+
+  .card-badges { display: flex; gap: 8px; margin-bottom: 8px; }
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .badge-tier.tier-q1 { background: var(--q1-bg); color: var(--q1-text); }
+  .badge-tier.tier-q2 { background: var(--q2-bg); color: var(--q2-text); }
+  .badge-tier.tier-q3 { background: var(--q3-bg); color: var(--q3-text); }
+  .badge-tier.tier-q4 { background: var(--q4-bg); color: var(--q4-text); }
+  .badge-tier.tier-none { background: var(--qnone-bg); color: var(--qnone-text); }
+  .badge-pubtype { background: var(--bg-subtle); color: var(--text-secondary); border: 1px solid var(--border); }
+  .badge-cited { background: var(--bg-subtle); color: var(--text-secondary); border: 1px solid var(--border); }
+
+  .card-meta { font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
+  .card-journal { font-style: italic; }
+
+  .card-title { font-size: 15.5px; margin: 4px 0 10px; font-weight: 600; }
+  .card-title a { text-decoration: none; }
+  .card-title a:hover { text-decoration: underline; }
+
+  .card-actions { display: flex; gap: 8px; }
+  .card-actions .btn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-subtle);
+    color: var(--text);
+    font-size: 13px;
+  }
+  .btn-keep.active { background: var(--success); color: #ffffff; border-color: var(--success); }
+  .btn-maybe.active { background: var(--warning); color: #ffffff; border-color: var(--warning); }
+  .btn-skip.active { background: var(--danger); color: #ffffff; border-color: var(--danger); }
+
+  .abstract-box {
+    margin-top: 12px;
+    padding: 12px 14px;
+    background: var(--bg-subtle);
+    border-radius: 8px;
+    font-size: 13.5px;
+    white-space: pre-wrap;
+  }
+  .abstract-box.hidden { display: none; }
+
+  /* -------------------- Pagination -------------------- */
+  #paginationBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 18px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  #paginationInfo { font-size: 13px; color: var(--text-secondary); }
+  .pagination-right { display: flex; align-items: center; gap: 10px; }
+  #perPageSelect {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+  }
+  #pageButtons { display: flex; align-items: center; gap: 4px; }
+  .page-btn {
+    min-width: 32px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-subtle);
+    color: var(--text);
+    font-size: 13px;
+  }
+  .page-btn.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .page-ellipsis { padding: 0 4px; color: var(--text-secondary); }
+
+  .empty-state { color: var(--text-secondary); font-size: 14px; padding: 24px 0; text-align: center; }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>PubMed Literature Review Tool</h1>
+  <div class="header-right">
+    <div id="exportBar">
+      <span>Keep list: <strong id="exportCount">0</strong></span>
+      <button type="button" id="exportCopyBtn" disabled>Copy citations</button>
+      <button type="button" id="exportRisBtn" disabled>Download .ris</button>
+    </div>
+    <button type="button" id="settingsToggle" aria-expanded="false" aria-controls="settingsPanel">⚙ Settings</button>
+  </div>
+</header>
+
+<main>
+
+  <section id="settingsPanel" aria-label="Settings">
+    <h2>Settings</h2>
+
+    <div class="settings-block">
+      <label class="field-label" for="apiKeyInput">NCBI API key (optional)</label>
+      <input type="text" id="apiKeyInput" autocomplete="off" spellcheck="false" placeholder="Paste your NCBI API key here">
+      <div class="status-text" id="apiKeyStatus"></div>
+      <div class="help-text">เร็วขึ้น 3 เท่าด้วย NCBI API key (ฟรี, ไม่บังคับ)
+ถ้าไม่กรอก เครื่องมือทำงานได้ปกติที่ 3 requests/วินาที กรอก key แล้วจะได้ 10/วินาที
+วิธีเอา key:
+1. สมัคร/ล็อกอิน NCBI account ที่ https://account.ncbi.nlm.nih.gov/
+2. ไปที่ Account settings → หัวข้อ "API Key Management"
+3. กด "Create an API Key" → คัดลอกมาวางในช่องนี้
+key เก็บในเบราว์เซอร์ของคุณเท่านั้น (localStorage) ไม่ถูกส่งขึ้นเว็บหรือแชร์กับใคร</div>
+    </div>
+
+    <div class="settings-block">
+      <label class="field-label" for="csvFileInput">อัปเดตข้อมูล journal quartile ประจำปี (SCImago CSV)</label>
+      <input type="file" id="csvFileInput" accept=".csv">
+      <div class="status-text" id="csvStatus"></div>
+      <div class="help-text">อัปเดตข้อมูล journal quartile ประจำปี
+ไฟล์ที่ใช้อยู่: ดูสถานะด้านบน
+วิธีหาไฟล์ปีใหม่:
+1. เปิด https://www.scimagojr.com/journalrank.php
+2. เลือกปีจาก dropdown "Year" (ข้อมูลออกช้ากว่าปีจริง ~1 ปี)
+3. กดปุ่ม "Download data" (ไอคอนบนขวาของตาราง) → ได้ไฟล์ scimagojr YYYY.csv
+4. กด Upload ด้านล่างเพื่อใช้ไฟล์ใหม่
+รูปแบบไฟล์ต้องเป็นของ SCImago แท้ (คั่นด้วย ";", ทศนิยมเป็น ",")</div>
+    </div>
+
+    <div class="settings-block">
+      <label class="field-label toggle-label">
+        <input type="checkbox" id="citationCountsToggle">
+        Show citation counts (Europe PMC)
+      </label>
+      <div class="help-text">ปิดไว้เป็นค่าเริ่มต้น เพราะฟีเจอร์นี้ต้องส่งหมายเลข PMID ของบทความที่คุณกำลังดูอยู่ไปที่ europepmc.org (ebi.ac.uk) — คนละเว็บกับ eutils.ncbi.nlm.nih.gov ที่เครื่องมือนี้ใช้เป็นหลัก (ดู §7)
+เปิดแล้วจะเห็น badge "Cited by N" บนการ์ดแต่ละใบ ไม่มีข้อมูลส่วนตัวถูกส่งไป มีแค่ PMID เท่านั้น</div>
+    </div>
+  </section>
+
+  <section id="queryBuilderSection" aria-label="Query builder">
+    <h2>Query builder</h2>
+
+    <div id="savedSearchesRow">
+      <select id="savedSearchesSelect"><option value="">— Saved searches —</option></select>
+      <button type="button" id="loadSavedSearchBtn">Load</button>
+      <button type="button" id="deleteSavedSearchBtn">Delete</button>
+      <button type="button" id="saveSearchBtn">+ Save current search</button>
+    </div>
+
+    <div id="termRows"></div>
+    <button type="button" id="addTermBtn">+ Add term</button>
+
+    <div class="row-block">
+      <div class="pubtype-group-label">Pub type filters</div>
+      <div id="pubTypeChips">
+        <div class="pubtype-group">
+          <div class="pubtype-group-label">Synthesis</div>
+          <div class="chip-row">
+            <button type="button" class="chip" data-pubtype="Systematic Review">Systematic Review</button>
+            <button type="button" class="chip" data-pubtype="Meta-Analysis">Meta-Analysis</button>
+          </div>
+        </div>
+        <div class="pubtype-group">
+          <div class="pubtype-group-label">Trials</div>
+          <div class="chip-row">
+            <button type="button" class="chip" data-pubtype="Randomized Controlled Trial">Randomized Controlled Trial</button>
+            <button type="button" class="chip" data-pubtype="Clinical Trial">Clinical Trial</button>
+            <button type="button" class="chip" data-pubtype="Controlled Clinical Trial">Controlled Clinical Trial</button>
+          </div>
+        </div>
+        <div class="pubtype-group">
+          <div class="pubtype-group-label">Guidelines</div>
+          <div class="chip-row">
+            <button type="button" class="chip" data-pubtype="Practice Guideline">Practice Guideline</button>
+            <button type="button" class="chip" data-pubtype="Guideline">Guideline</button>
+          </div>
+        </div>
+        <div class="pubtype-group">
+          <div class="pubtype-group-label">Reviews</div>
+          <div class="chip-row">
+            <button type="button" class="chip" data-pubtype="Review">Review</button>
+            <button type="button" class="chip" data-pubtype="Scoping Review">Scoping Review</button>
+          </div>
+        </div>
+        <div class="pubtype-group">
+          <div class="pubtype-group-label">Other</div>
+          <div class="chip-row">
+            <button type="button" class="chip" data-pubtype="Observational Study">Observational Study</button>
+            <button type="button" class="chip" data-pubtype="Comparative Study">Comparative Study</button>
+            <button type="button" class="chip" data-pubtype="Case Reports">Case Reports</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row-block">
+      <div class="pubtype-group-label">Year range</div>
+      <div id="yearRangeLabel">2000 – Present</div>
+      <div class="year-slider" id="yearSlider">
+        <div class="year-slider-track" id="yearSliderTrack"></div>
+        <div class="year-slider-range" id="yearSliderRange"></div>
+        <div class="year-thumb" id="yearThumbFrom" tabindex="0" role="slider" aria-label="From year" aria-valuemin="1950"></div>
+        <div class="year-thumb" id="yearThumbTo" tabindex="0" role="slider" aria-label="To year" aria-valuemin="1950"></div>
+        <div class="year-slider-ticks" id="yearSliderTicks"></div>
+      </div>
+      <div class="hint">Drag either end to narrow the range. A date filter is only added for the end(s) you've moved in — leave both at their extremes to search all years.</div>
+    </div>
+
+    <div class="row-block">
+      <div class="pubtype-group-label">Max results</div>
+      <div id="maxResultsGroup">
+        <button type="button" class="segmented-btn" data-value="50">50</button>
+        <button type="button" class="segmented-btn active" data-value="100">100</button>
+        <button type="button" class="segmented-btn" data-value="200">200</button>
+        <button type="button" class="segmented-btn" data-value="500">500</button>
+      </div>
+    </div>
+
+    <div class="row-block">
+      <button type="button" id="queryPreviewToggle" aria-expanded="false" aria-controls="queryPreviewBody">▸ Query preview</button>
+      <div id="queryPreviewBody">
+        <pre id="queryPreviewText"></pre>
+        <button type="button" id="copyQueryBtn">Copy query</button>
+      </div>
+    </div>
+
+    <button type="button" id="searchBtn">Search PubMed</button>
+    <div id="searchError"></div>
+    <div id="searchLoading"></div>
+  </section>
+
+  <section id="resultsSection" aria-label="Results">
+    <h2>Results</h2>
+
+    <div id="sortBar">
+      <span class="sort-label">Sort:</span>
+      <button type="button" class="sort-btn active" data-sort="newest">Newest</button>
+      <button type="button" class="sort-btn" data-sort="tier">Journal tier</button>
+      <button type="button" class="sort-btn" data-sort="pubtype">Pub type</button>
+    </div>
+
+    <div id="decisionFilterBar">
+      <span class="sort-label">Show:</span>
+      <button type="button" class="sort-btn active" data-decision="all">All</button>
+      <button type="button" class="sort-btn" data-decision="undecided">Undecided</button>
+      <button type="button" class="sort-btn" data-decision="keep">Keep</button>
+      <button type="button" class="sort-btn" data-decision="maybe">Maybe</button>
+      <button type="button" class="sort-btn" data-decision="skip">Skip</button>
+    </div>
+
+    <div id="resultsSummary"></div>
+    <div id="resultsList"></div>
+
+    <div id="paginationBar">
+      <div id="paginationInfo"></div>
+      <div class="pagination-right">
+        <select id="perPageSelect">
+          <option value="20">20 / page</option>
+          <option value="50" selected>50 / page</option>
+          <option value="100">100 / page</option>
+        </select>
+        <div id="pageButtons"></div>
+      </div>
+    </div>
+
+    <div id="possiblyMissedBlock" class="hidden">
+      <button type="button" id="possiblyMissedToggle" aria-expanded="false" aria-controls="possiblyMissedList">▸ Possibly missed (0)</button>
+      <div id="possiblyMissedList"></div>
+    </div>
+  </section>
+
+</main>
+
+<script src="scimago.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
