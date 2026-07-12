@@ -1348,8 +1348,10 @@
 
   function updateCsvStatusText() {
     if (scimagoMeta && scimagoMap && scimagoMap.size) {
-      dom.csvStatus.textContent = 'Currently using: SCImago ' + (scimagoMeta.year || '(unknown year)') +
-        ' — ' + (scimagoMeta.filename || 'uploaded file') + ' (' + scimagoMap.size + ' journals loaded).';
+      var prefix = scimagoMeta.bundled ? 'Currently using bundled default: SCImago ' : 'Currently using: SCImago ';
+      var suffix = scimagoMeta.bundled ? ' (upload a newer CSV below anytime).' : '.';
+      dom.csvStatus.textContent = prefix + (scimagoMeta.year || '(unknown year)') +
+        ' — ' + (scimagoMeta.filename || 'uploaded file') + ' (' + scimagoMap.size + ' journals loaded)' + suffix;
     } else {
       dom.csvStatus.textContent = 'No SCImago data loaded yet. Journal tier badges will show "—" (not indexed) until you upload a CSV below.';
     }
@@ -1370,13 +1372,7 @@
         }
         var year = window.Scimago.guessYearFromFilename(file.name);
         var meta = { filename: file.name, year: year, rowCount: map.size, uploadedAt: Date.now() };
-        scimagoMap = map;
-        scimagoMeta = meta;
-        applyTierLookup(state.results);
-        applyTierLookup(state.possiblyMissed);
-        renderResults();
-        renderPossiblyMissed();
-        updateCsvStatusText();
+        applyScimagoData(map, meta);
         window.Scimago.saveScimagoData(map, meta).catch(function (err) {
           console.error('Failed to cache SCImago data in IndexedDB', err);
         });
@@ -1644,21 +1640,64 @@
     dom.possiblyMissedToggle.addEventListener('click', togglePossiblyMissed);
   }
 
+  // Bundled default (spec §2) — a real SCImago 2025 export shipped in
+  // webapp/data/. Only used the very first time, before anything is
+  // cached in IndexedDB; once loaded it's cached there too so the 11MB
+  // file is fetched and parsed at most once, not on every visit.
+  var BUNDLED_SCIMAGO_PATH = 'data/scimagojr_2025.csv';
+  var BUNDLED_SCIMAGO_YEAR = '2025';
+
+  function applyScimagoData(map, meta) {
+    scimagoMap = map;
+    scimagoMeta = meta;
+    applyTierLookup(state.results);
+    applyTierLookup(state.possiblyMissed);
+    renderResults();
+    renderPossiblyMissed();
+    updateCsvStatusText();
+  }
+
+  function loadBundledScimagoDefault() {
+    return fetch(BUNDLED_SCIMAGO_PATH)
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.text();
+      })
+      .then(function (text) {
+        var map = window.Scimago.parseScimagoCSV(text);
+        if (!map.size) throw new Error('parsed 0 rows from bundled CSV');
+        var meta = {
+          filename: 'scimagojr_' + BUNDLED_SCIMAGO_YEAR + '.csv',
+          year: BUNDLED_SCIMAGO_YEAR,
+          rowCount: map.size,
+          uploadedAt: Date.now(),
+          bundled: true
+        };
+        applyScimagoData(map, meta);
+        return window.Scimago.saveScimagoData(map, meta).catch(function (err) {
+          console.error('Failed to cache bundled SCImago data in IndexedDB', err);
+        });
+      })
+      .catch(function (err) {
+        // No bundled file, or this browser can't fetch it (e.g. opened via
+        // file:// instead of a local server) - fine, same graceful "no data
+        // loaded yet" state as before the bundle existed.
+        console.error('Failed to load bundled SCImago default CSV', err);
+        updateCsvStatusText();
+      });
+  }
+
   function loadCachedScimagoData() {
     if (!window.Scimago) return Promise.resolve();
     return window.Scimago.loadScimagoData().then(function (data) {
       if (data && data.map && data.map.size) {
-        scimagoMap = data.map;
-        scimagoMeta = data.meta;
-        applyTierLookup(state.results);
-        applyTierLookup(state.possiblyMissed);
-        renderResults();
-        renderPossiblyMissed();
+        applyScimagoData(data.map, data.meta);
+        return;
       }
-      updateCsvStatusText();
+      return loadBundledScimagoDefault();
     }).catch(function (err) {
       console.error('Failed to load cached SCImago data from IndexedDB', err);
-      updateCsvStatusText();
+      return loadBundledScimagoDefault();
     });
   }
 
