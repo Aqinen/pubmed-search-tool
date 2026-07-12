@@ -635,6 +635,34 @@
     return lines.join('\n');
   }
 
+  function csvField(value) {
+    var s = value == null ? '' : String(value);
+    if (/[",\r\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function formatCSVAll(papers) {
+    var header = ['Title', 'Authors', 'Journal', 'Year', 'Volume', 'Issue', 'Pages', 'DOI', 'PMID', 'Link'];
+    var rows = papers.map(function (p) {
+      return [
+        p.title,
+        (p.authors || []).join('; '),
+        p.journal || p.journalAbbrev || '',
+        p.year || '',
+        p.volume || '',
+        p.issue || '',
+        p.pages || '',
+        p.doi || '',
+        p.pmid,
+        'https://pubmed.ncbi.nlm.nih.gov/' + p.pmid + '/'
+      ].map(csvField).join(',');
+    });
+    // Leading BOM so Excel (especially on Windows) reliably detects UTF-8
+    // instead of mis-rendering non-ASCII author/journal names.
+    var BOM = String.fromCharCode(0xFEFF);
+    return BOM + [header.join(',')].concat(rows).join('\r\n');
+  }
+
   function getKeptPapers() {
     return loadAllDecisionRecords().then(function (records) {
       return records
@@ -648,6 +676,7 @@
     getKeptPapers().then(function (papers) {
       dom.exportCount.textContent = String(papers.length);
       dom.exportCopyBtn.disabled = papers.length === 0;
+      dom.exportCsvBtn.disabled = papers.length === 0;
       dom.exportRisBtn.disabled = papers.length === 0;
     });
   }
@@ -679,6 +708,13 @@
         } else {
           fallbackCopy(text, flash);
         }
+      });
+    });
+
+    dom.exportCsvBtn.addEventListener('click', function () {
+      getKeptPapers().then(function (papers) {
+        if (!papers.length) return;
+        downloadTextFile('pubmed-keep-list.csv', formatCSVAll(papers), 'text/csv;charset=utf-8');
       });
     });
 
@@ -1420,6 +1456,7 @@
   function cacheDom() {
     dom.exportCount = document.getElementById('exportCount');
     dom.exportCopyBtn = document.getElementById('exportCopyBtn');
+    dom.exportCsvBtn = document.getElementById('exportCsvBtn');
     dom.exportRisBtn = document.getElementById('exportRisBtn');
 
     dom.settingsToggle = document.getElementById('settingsToggle');
