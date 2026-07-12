@@ -910,10 +910,22 @@
         if (activeSet.has(value)) activeSet.delete(value); else activeSet.add(value);
         btn.classList.toggle('active', activeSet.has(value));
         state.currentPage = 1;
+        updateResultsFilterToggleLabel();
         renderResults();
       });
       container.appendChild(btn);
     });
+  }
+
+  // The toggle button's own label doubles as the "which Q / which type is
+  // filtered" indicator, so it's readable without opening the panel.
+  function updateResultsFilterToggleLabel() {
+    var qLabels = Array.from(state.qualityFilter).map(function (q) { return q === 'none' ? 'Not indexed' : q; });
+    var active = qLabels.concat(Array.from(state.typeFilter));
+    var isOpen = !dom.resultsFilterPanel.classList.contains('hidden');
+    var text = active.length ? 'Filters: ' + active.join(', ') : 'Filters';
+    dom.resultsFilterToggle.textContent = text + (isOpen ? ' ▴' : ' ▾');
+    dom.resultsFilterToggle.setAttribute('aria-expanded', String(isOpen));
   }
 
   function renderQualityTypeFilters() {
@@ -928,6 +940,18 @@
       return q === 'none' ? 'Not indexed' : q;
     });
     buildToggleFilterBar(dom.typeFilterBar, 'Type:', types, state.typeFilter);
+
+    var hasAnyFilterOptions = quartiles.length > 1 || types.length > 1;
+    dom.resultsFilterToggle.disabled = !hasAnyFilterOptions;
+    if (!hasAnyFilterOptions) dom.resultsFilterPanel.classList.add('hidden');
+    updateResultsFilterToggleLabel();
+  }
+
+  function initResultsFilterToggle() {
+    dom.resultsFilterToggle.addEventListener('click', function () {
+      dom.resultsFilterPanel.classList.toggle('hidden');
+      updateResultsFilterToggleLabel();
+    });
   }
 
   function renderResults() {
@@ -1597,7 +1621,9 @@
     dom.searchError = document.getElementById('searchError');
     dom.searchLoading = document.getElementById('searchLoading');
 
-    dom.sortBar = document.getElementById('sortBar');
+    dom.sortSelect = document.getElementById('sortSelect');
+    dom.resultsFilterToggle = document.getElementById('resultsFilterToggle');
+    dom.resultsFilterPanel = document.getElementById('resultsFilterPanel');
     dom.decisionFilterBar = document.getElementById('decisionFilterBar');
     dom.qualityFilterBar = document.getElementById('qualityFilterBar');
     dom.typeFilterBar = document.getElementById('typeFilterBar');
@@ -1748,15 +1774,12 @@
     });
   }
 
-  function initSortBar() {
-    var sortBtns = dom.sortBar.querySelectorAll('.sort-btn');
-    sortBtns.forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        state.sortMode = btn.dataset.sort;
-        sortBtns.forEach(function (b) { b.classList.toggle('active', b === btn); });
-        state.currentPage = 1;
-        renderResults();
-      });
+  function initSortSelect() {
+    dom.sortSelect.value = state.sortMode;
+    dom.sortSelect.addEventListener('change', function () {
+      state.sortMode = dom.sortSelect.value;
+      state.currentPage = 1;
+      renderResults();
     });
   }
 
@@ -1899,7 +1922,8 @@
     initSettings();
     initQueryBuilder();
     initSavedSearches();
-    initSortBar();
+    initSortSelect();
+    initResultsFilterToggle();
     initDecisionFilterBar();
     initPagination();
     initPossiblyMissed();
@@ -1907,6 +1931,7 @@
 
     renderTermRows();
     updateQueryPreview();
+    renderQualityTypeFilters();
     renderResults();
     renderPossiblyMissed();
 

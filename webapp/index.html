@@ -208,6 +208,27 @@
     border-radius: 10px 10px 0 0;
   }
 
+  /* Variant for section headers that also carry a small right-aligned
+     toolbar (e.g. Results: sort + filters) inside the same colored bar. */
+  .section-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: var(--header-bg);
+    color: var(--header-text);
+    margin: -18px -20px 16px -20px;
+    padding: 10px 20px;
+    border-radius: 10px 10px 0 0;
+  }
+  .section-header-bar h2 {
+    margin: 0;
+    padding: 0;
+    background: none;
+    border-radius: 0;
+  }
+
   button {
     font: inherit;
     cursor: pointer;
@@ -542,11 +563,38 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* -------------------- Results -------------------- */
-  #sortBar, #decisionFilterBar, #qualityFilterBar, #typeFilterBar {
+
+  /* Compact toolbar in the top-right corner of the Results header bar. */
+  #resultsToolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  #sortSelect {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    background: var(--bg-elevated);
+    color: var(--text);
+    font-size: 13px;
+  }
+  #resultsFilterToggle {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    background: var(--bg-elevated);
+    color: var(--text);
+    font-size: 13px;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #resultsFilterToggle:disabled { opacity: 0.5; cursor: not-allowed; }
+  #resultsFilterPanel { margin-bottom: 14px; }
+  #resultsFilterPanel.hidden { display: none; }
+
+  #decisionFilterBar, #qualityFilterBar, #typeFilterBar {
     display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;
   }
   #qualityFilterBar.hidden, #typeFilterBar.hidden { display: none; }
-  #sortBar .sort-label, #decisionFilterBar .sort-label,
+  #decisionFilterBar .sort-label,
   #qualityFilterBar .sort-label, #typeFilterBar .sort-label {
     font-size: 13px; color: var(--text-secondary); margin-right: 4px;
   }
@@ -844,13 +892,21 @@ key เก็บในเบราว์เซอร์ของคุณเท�
   </section>
 
   <section id="resultsSection" aria-label="Results">
-    <h2>Results</h2>
+    <div class="section-header-bar">
+      <h2>Results</h2>
+      <div id="resultsToolbar">
+        <select id="sortSelect" aria-label="Sort results">
+          <option value="newest">Sort: Newest</option>
+          <option value="tier">Sort: Journal tier</option>
+          <option value="pubtype">Sort: Pub type</option>
+        </select>
+        <button type="button" id="resultsFilterToggle" aria-expanded="false" aria-controls="resultsFilterPanel">Filters ▾</button>
+      </div>
+    </div>
 
-    <div id="sortBar">
-      <span class="sort-label">Sort:</span>
-      <button type="button" class="sort-btn active" data-sort="newest">Newest</button>
-      <button type="button" class="sort-btn" data-sort="tier">Journal tier</button>
-      <button type="button" class="sort-btn" data-sort="pubtype">Pub type</button>
+    <div id="resultsFilterPanel" class="hidden">
+      <div id="qualityFilterBar" class="hidden"></div>
+      <div id="typeFilterBar" class="hidden"></div>
     </div>
 
     <div id="decisionFilterBar">
@@ -860,9 +916,6 @@ key เก็บในเบราว์เซอร์ของคุณเท�
       <button type="button" class="sort-btn" data-decision="keep">Keep</button>
       <button type="button" class="sort-btn" data-decision="maybe">Maybe</button>
     </div>
-
-    <div id="qualityFilterBar" class="hidden"></div>
-    <div id="typeFilterBar" class="hidden"></div>
 
     <div id="resultsSummary"></div>
     <div id="resultsList"></div>
