@@ -827,7 +827,13 @@
   }
 
   function setSearchLoading(isLoading) {
-    dom.searchLoading.textContent = isLoading ? 'Searching PubMed…' : '';
+    dom.searchLoading.innerHTML = '';
+    if (isLoading) {
+      var spinner = document.createElement('span');
+      spinner.className = 'spinner';
+      dom.searchLoading.appendChild(spinner);
+      dom.searchLoading.appendChild(document.createTextNode('Searching PubMed…'));
+    }
     dom.searchLoading.classList.toggle('visible', isLoading);
   }
 
@@ -1463,6 +1469,7 @@
     dom.exportCsvBtn = document.getElementById('exportCsvBtn');
     dom.exportRisBtn = document.getElementById('exportRisBtn');
 
+    dom.themeToggle = document.getElementById('themeToggle');
     dom.settingsToggle = document.getElementById('settingsToggle');
     dom.settingsPanel = document.getElementById('settingsPanel');
     dom.apiKeyInput = document.getElementById('apiKeyInput');
@@ -1742,8 +1749,54 @@
     });
   }
 
+  // =========================================================
+  // Theme toggle (light/dark) — explicit override on top of the
+  // prefers-color-scheme default set by index.html's pre-paint script.
+  // =========================================================
+
+  var THEME_KEY = 'theme_preference';
+
+  function getStoredTheme() {
+    try {
+      var t = localStorage.getItem(THEME_KEY);
+      return (t === 'light' || t === 'dark') ? t : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function setStoredTheme(theme) {
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch (e) {
+      // localStorage unavailable - toggle still works this session, just won't persist.
+    }
+  }
+
+  function effectiveTheme() {
+    var stored = getStoredTheme();
+    if (stored) return stored;
+    return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    dom.themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+    dom.themeToggle.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+  }
+
+  function initTheme() {
+    applyTheme(effectiveTheme());
+    dom.themeToggle.addEventListener('click', function () {
+      var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+      setStoredTheme(next);
+      applyTheme(next);
+    });
+  }
+
   function init() {
     cacheDom();
+    initTheme();
     initSettings();
     initQueryBuilder();
     initSavedSearches();

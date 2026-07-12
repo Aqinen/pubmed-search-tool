@@ -4,62 +4,135 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PubMed Literature Review Tool</title>
+<script>
+// Applied before first paint to avoid a flash of the wrong theme when the
+// user has an explicit override stored (key must match THEME_KEY in app.js).
+(function () {
+  try {
+    var t = localStorage.getItem('theme_preference');
+    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) { /* localStorage unavailable - falls back to prefers-color-scheme */ }
+})();
+</script>
 <style>
   :root {
-    --bg: #f5f6f8;
-    --bg-elevated: #ffffff;
-    --bg-subtle: #eef0f3;
-    --text: #1a1c1f;
-    --text-secondary: #5f6368;
-    --border: #d7dae0;
-    --accent: #2563eb;
+    --bg: #f3f0e6;
+    --bg-elevated: #fffdf7;
+    --bg-subtle: #e9e4d3;
+    --text: #2e2c24;
+    --text-secondary: #6f6b58;
+    --border: #d9d2ba;
+    --accent: #7c8f5f;
     --accent-text: #ffffff;
-    --accent-hover: #1d4ed8;
-    --danger: #dc2626;
-    --danger-bg: #fdecec;
-    --success: #16a34a;
-    --warning: #d97706;
-    --q1-bg: #16a34a; --q1-text: #ffffff;
-    --q2-bg: #65a30d; --q2-text: #ffffff;
-    --q3-bg: #ca8a04; --q3-text: #ffffff;
-    --q4-bg: #dc2626; --q4-text: #ffffff;
-    --qnone-bg: #d7dae0; --qnone-text: #5f6368;
-    --chip-bg: #eef0f3;
-    --chip-text: #3c4043;
-    --chip-selected-bg: #2563eb;
+    --accent-hover: #667a4b;
+    --danger: #b3492f;
+    --danger-bg: #f5e3db;
+    --success: #5c8a4a;
+    --warning: #c68a2e;
+    --header-bg: #a7b78f;
+    --header-text: #2e2c24;
+    --q1-bg: #5c8a4a; --q1-text: #ffffff;
+    --q2-bg: #8a9a4a; --q2-text: #ffffff;
+    --q3-bg: #c68a2e; --q3-text: #ffffff;
+    --q4-bg: #b3492f; --q4-text: #ffffff;
+    --qnone-bg: #d9d2ba; --qnone-text: #6f6b58;
+    --chip-bg: #e9e4d3;
+    --chip-text: #4a4738;
+    --chip-selected-bg: #7c8f5f;
     --chip-selected-text: #ffffff;
-    --link: #2563eb;
-    --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
+    --link: #5c7a45;
+    --shadow: 0 1px 2px rgba(46, 44, 36, 0.08), 0 1px 3px rgba(46, 44, 36, 0.1);
     color-scheme: light dark;
   }
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #14161a;
-      --bg-elevated: #1c1f24;
-      --bg-subtle: #22262c;
-      --text: #e7e9ec;
-      --text-secondary: #9aa0a6;
-      --border: #2e333a;
-      --accent: #5b8def;
-      --accent-text: #0b0d10;
-      --accent-hover: #7ba3f2;
-      --danger: #f87171;
-      --danger-bg: #3a1f22;
-      --success: #4ade80;
-      --warning: #fbbf24;
-      --q1-bg: #1e7e37; --q1-text: #eafff0;
-      --q2-bg: #56760f; --q2-text: #f3ffe0;
-      --q3-bg: #97690a; --q3-text: #fff6e0;
-      --q4-bg: #9b2626; --q4-text: #ffecec;
-      --qnone-bg: #2e333a; --qnone-text: #9aa0a6;
-      --chip-bg: #22262c;
-      --chip-text: #c7cad0;
-      --chip-selected-bg: #5b8def;
-      --chip-selected-text: #0b0d10;
-      --link: #7ba3f2;
-      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
+      --bg: #14110d;
+      --bg-elevated: #1e1a14;
+      --bg-subtle: #28221a;
+      --text: #f3e9da;
+      --text-secondary: #b3a58e;
+      --border: #3d3527;
+      --accent: #f2871f;
+      --accent-text: #171208;
+      --accent-hover: #ff9c3f;
+      --danger: #e2543a;
+      --danger-bg: #3a1e17;
+      --success: #8fbf5a;
+      --warning: #f2b705;
+      --header-bg: #4a2c11;
+      --header-text: #f2b775;
+      --q1-bg: #8fbf5a; --q1-text: #14110d;
+      --q2-bg: #d4c23a; --q2-text: #14110d;
+      --q3-bg: #f2871f; --q3-text: #14110d;
+      --q4-bg: #e2543a; --q4-text: #14110d;
+      --qnone-bg: #3d3527; --qnone-text: #b3a58e;
+      --chip-bg: #28221a;
+      --chip-text: #d8cbb5;
+      --chip-selected-bg: #f2871f;
+      --chip-selected-text: #171208;
+      --link: #f2a655;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.5);
     }
+  }
+
+  /* Manual theme toggle overrides — win over the OS-level media query in
+     either direction once the user picks explicitly (see app.js initTheme). */
+  :root[data-theme="dark"] {
+    --bg: #14110d;
+    --bg-elevated: #1e1a14;
+    --bg-subtle: #28221a;
+    --text: #f3e9da;
+    --text-secondary: #b3a58e;
+    --border: #3d3527;
+    --accent: #f2871f;
+    --accent-text: #171208;
+    --accent-hover: #ff9c3f;
+    --danger: #e2543a;
+    --danger-bg: #3a1e17;
+    --success: #8fbf5a;
+    --warning: #f2b705;
+    --header-bg: #4a2c11;
+    --header-text: #f2b775;
+    --q1-bg: #8fbf5a; --q1-text: #14110d;
+    --q2-bg: #d4c23a; --q2-text: #14110d;
+    --q3-bg: #f2871f; --q3-text: #14110d;
+    --q4-bg: #e2543a; --q4-text: #14110d;
+    --qnone-bg: #3d3527; --qnone-text: #b3a58e;
+    --chip-bg: #28221a;
+    --chip-text: #d8cbb5;
+    --chip-selected-bg: #f2871f;
+    --chip-selected-text: #171208;
+    --link: #f2a655;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.5);
+  }
+  :root[data-theme="light"] {
+    --bg: #f3f0e6;
+    --bg-elevated: #fffdf7;
+    --bg-subtle: #e9e4d3;
+    --text: #2e2c24;
+    --text-secondary: #6f6b58;
+    --border: #d9d2ba;
+    --accent: #7c8f5f;
+    --accent-text: #ffffff;
+    --accent-hover: #667a4b;
+    --danger: #b3492f;
+    --danger-bg: #f5e3db;
+    --success: #5c8a4a;
+    --warning: #c68a2e;
+    --header-bg: #a7b78f;
+    --header-text: #2e2c24;
+    --q1-bg: #5c8a4a; --q1-text: #ffffff;
+    --q2-bg: #8a9a4a; --q2-text: #ffffff;
+    --q3-bg: #c68a2e; --q3-text: #ffffff;
+    --q4-bg: #b3492f; --q4-text: #ffffff;
+    --qnone-bg: #d9d2ba; --qnone-text: #6f6b58;
+    --chip-bg: #e9e4d3;
+    --chip-text: #4a4738;
+    --chip-selected-bg: #7c8f5f;
+    --chip-selected-text: #ffffff;
+    --link: #5c7a45;
+    --shadow: 0 1px 2px rgba(46, 44, 36, 0.08), 0 1px 3px rgba(46, 44, 36, 0.1);
   }
 
   * { box-sizing: border-box; }
@@ -124,11 +197,15 @@
   }
 
   h2 {
-    font-size: 15px;
+    font-size: 14px;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--text-secondary);
-    margin: 0 0 14px;
+    color: var(--header-text);
+    background: var(--header-bg);
+    margin: -18px -20px 16px -20px;
+    padding: 10px 20px;
+    border-radius: 10px 10px 0 0;
   }
 
   button {
@@ -148,6 +225,20 @@
     border-radius: 8px;
   }
   #settingsToggle:hover { background: var(--border); }
+
+  #themeToggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    line-height: 1;
+  }
+  #themeToggle:hover { background: var(--border); }
 
   #settingsPanel {
     display: none;
@@ -432,11 +523,23 @@
 
   #searchLoading {
     display: none;
+    align-items: center;
+    gap: 8px;
     margin-top: 12px;
     color: var(--text-secondary);
     font-size: 13px;
   }
-  #searchLoading.visible { display: block; }
+  #searchLoading.visible { display: flex; }
+  .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--accent);
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   /* -------------------- Results -------------------- */
   #sortBar, #decisionFilterBar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
@@ -579,6 +682,7 @@
       <button type="button" id="exportCsvBtn" disabled>Download Excel (.csv)</button>
       <button type="button" id="exportRisBtn" disabled>Download .ris</button>
     </div>
+    <button type="button" id="themeToggle" aria-label="Toggle dark/light theme">🌙</button>
     <button type="button" id="settingsToggle" aria-expanded="false" aria-controls="settingsPanel">⚙ Settings</button>
   </div>
 </header>
